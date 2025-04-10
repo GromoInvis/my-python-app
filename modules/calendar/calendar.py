@@ -11,6 +11,7 @@ class CalendarModule(BaseModule):
         super().__init__("Календар", "calendar.png", "Продуктивність")
         self.notes_file = "calendar_notes.json"
         self.notes = self.load_notes()
+        self.calendar = None  # Ініціалізуємо як None
     
     def get_menu_actions(self):
         """Реалізація абстрактного методу"""
@@ -23,25 +24,42 @@ class CalendarModule(BaseModule):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
-        # Український календар
+        # Український календар (спершу ініціалізуємо)
         self.calendar = QCalendarWidget()
         self.calendar.setLocale(QLocale(QLocale.Ukrainian, QLocale.Ukraine))
         self.calendar.setGridVisible(True)
+        
+        # Тепер можна застосовувати стилі
+        self.calendar.setStyleSheet("""
+            QCalendarWidget {
+                font-size: 14px;
+            }
+            QCalendarWidget QToolButton {
+                font-size: 16px;
+                color: #0055ff;
+            }
+        """)
         
         # Інші елементи інтерфейсу...
         self.date_label = QLabel()
         self.notes_edit = QTextEdit()
         self.save_btn = QPushButton("Зберегти замітку")
+        self.content_widget = QWidget()  # Додаємо збереження віджета як атрибута
+    
         
         # Розміщення елементів...
         layout.addWidget(self.date_label)
         layout.addWidget(self.calendar)
         layout.addWidget(self.notes_edit)
         layout.addWidget(self.save_btn)
+        layout = QVBoxLayout(self.content_widget)
         
         # Підключення сигналів
         self.calendar.selectionChanged.connect(self.on_date_selected)
         self.save_btn.clicked.connect(self.save_note)
+        
+        # Завантажуємо виділення для дат з замітками
+        self.highlight_dates_with_notes()
         
         return widget
    
@@ -85,8 +103,21 @@ class CalendarModule(BaseModule):
         
         self.save_notes()
         self.highlight_dates_with_notes()
-    
+        
+        from PyQt5.QtWidgets import QMessageBox
+        # Змінив self на self.content_widget (або None, якщо content_widget не існує)
+        parent_widget = getattr(self, 'content_widget', None)
+        QMessageBox.information(
+            parent_widget,  # Використовуємо content_widget як батьківський віджет
+            "Успіх", 
+            "Замітку збережено!" if note_text.strip() else "Замітку видалено"
+        )
+
     def highlight_dates_with_notes(self):
+
+        if self.calendar is None:
+            return
+        
         """Виділяє дати, для яких є замітки"""
         highlight_format = QTextCharFormat()
         highlight_format.setBackground(QColor(255, 255, 150))  # Жовтий фон
