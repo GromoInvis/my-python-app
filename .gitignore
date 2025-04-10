@@ -1,0 +1,57 @@
+# Файли IDE та редакторів
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+
+# Python кеш та віртуальне оточення
+__pycache__/
+*.py[cod]
+.env/
+venv/
+env/
+*.venv/
+
+# Файли Google Drive
+client_secret.json
+token.pickle
+token.json
+credentials.json
+
+# Тимчасові файли та завантаження
+temp_google_drive/
+*.tmp
+*.download
+*.part
+
+# Дані модулів (не комітимо)
+data/
+modules/calendar/calendar_notes.json
+modules/notes/notes_data.html
+*.db
+*.sqlite
+
+# Логи та системні файли
+*.log
+*.bak
+*.cache
+
+# Збірка та дистрибутиви
+build/
+dist/
+*.egg-info/
+*.spec
+
+# ОС-специфічні файли
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Винятки (що мають комітитись)
+!modules/base_module.py
+!modules/google_drive/__init__.py
+!modules/google_drive/drive_ui.py
+!modules/google_drive/drive_api.py
+!modules/google_drive/auth.py
+!icons/

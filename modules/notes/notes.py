@@ -11,25 +11,23 @@ class NotesModule(BaseModule):
         super().__init__("Блокнот+", "notes.png", "Продуктивність")
         self.file_path = os.path.join("data", "notes_data.html")  # Шлях до єдиного файлу
         os.makedirs("data", exist_ok=True)  # Створюємо папку, якщо немає
-        self.setup_auto_save()
         self.current_color = None
 
     def create_content_widget(self) -> QWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
         
-        # Текстове поле з підтримкою HTML
         self.text_edit = QTextEdit()
         self.text_edit.setAcceptRichText(True)
         
-        # Панель інструментів
         self.toolbar = QToolBar()
         self.setup_toolbar()
         
         layout.addWidget(self.toolbar)
         layout.addWidget(self.text_edit)
         
-        self.load_content()  # Завантажуємо вміст при старті
+        self.load_content()
+        self.setup_auto_save()  # ✅ Тепер тут
         return widget
     
     def setup_toolbar(self):
