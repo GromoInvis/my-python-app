@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QMainWindow, QStackedWidget, QHBoxLayout, QWidget
 from ui.sidebar import Sidebar
 from ui.menu_bar import MenuBar
+from PyQt5.QtGui import QIcon
 
 class MainWindow(QMainWindow):
     def __init__(self, module_manager):
@@ -8,7 +9,8 @@ class MainWindow(QMainWindow):
         self.module_manager = module_manager
         self.current_module = None
         
-        self.setWindowTitle("Моя програма")
+        self.setWindowTitle("All in One")
+        self.setWindowIcon(QIcon("icons/app_icon.png"))
         self.setGeometry(100, 100, 1000, 600)
         
         # Спочатку створюємо всі віджети
@@ -75,4 +77,4 @@ class MainWindow(QMainWindow):
             
             self.content_stack.addWidget(content_widget)
             self.content_stack.setCurrentWidget(content_widget)
-            self.setWindowTitle(f"Моя програма - {module.name}")
+            self.setWindowTitle(f"All in One - {module.name}")
