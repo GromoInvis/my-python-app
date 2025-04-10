@@ -1,3 +1,4 @@
+# modules/base_module.py
 from abc import ABC, abstractmethod
 from PyQt5.QtWidgets import QWidget
 
