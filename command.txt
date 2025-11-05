@@ -1,3 +1,6 @@
+python main.py  - - - - - - -- -- - - -
+
+
 # Знаходимо хеш коміту (1a2b3c4 з прикладу вище)
     git log --oneline
 
@@ -27,3 +30,6 @@
 
 # Відправляємо на GitHub
     git push origin main
+
+
+    pyinstaller --noconfirm --onedir --windowed --icon=icons/app_icon.ico --name="AllInOne" main.py
