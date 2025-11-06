@@ -1,5 +1,6 @@
 python main.py  - - - - - - -- -- - - -
 
+pyinstaller --noconfirm --onefile --windowed main.py --name "All_in_One"
 
 # Знаходимо хеш коміту (1a2b3c4 з прикладу вище)
     git log --oneline

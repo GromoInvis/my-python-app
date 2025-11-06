@@ -1,111 +1,109 @@
+# core/module_manager.py
 from modules.base_module import BaseModule
 import importlib
 import os
-from PyQt5.QtWidgets import QAction
-from PyQt5.QtCore import Qt
-from typing import Dict, List, Optional, Type
+import json
+import sys
+from PyQt5.QtCore import QObject, pyqtSignal
+from typing import Dict, List, Optional
 
-class ModuleManager:
+
+def get_base_path() -> str:
+    """
+    Повертає справжню базову директорію проєкту:
+    - Для запуску з Python → директорія, де лежить main.py
+    - Для .exe → директорія з exe файлом
+    """
+    if getattr(sys, 'frozen', False):
+        # 📦 Якщо програма запущена як .exe (через PyInstaller)
+        return os.path.dirname(sys.executable)
+
+    # 🧠 Якщо запущено з вихідного коду — піднімаємося вище /core
+    current = os.path.dirname(os.path.abspath(__file__))
+    return os.path.abspath(os.path.join(current, ".."))
+
+
+class ModuleManager(QObject):
+    modules_changed = pyqtSignal()
+
     def __init__(self):
+        super().__init__()
+        self.base_path = get_base_path()
         self.modules: Dict[str, BaseModule] = {}
-        print("\n⏳ Завантаження модулів...")
+        self.MODULE_STATE_FILE = os.path.join(self.base_path, "config", "module_state.json")
+
+        self.enabled_modules = self._load_enabled_state()
+
+        print(f"\n📁 Базовий шлях: {self.base_path}")
+        print("⏳ Завантаження модулів...")
         self.load_modules()
-    
-    def load_modules(self) -> None:
-        """Завантажує всі доступні модулі з папки 'modules'"""
-        modules_dir = "modules"
+
+    def _load_enabled_state(self) -> dict:
+        if os.path.exists(self.MODULE_STATE_FILE):
+            try:
+                with open(self.MODULE_STATE_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    print(f"🧭 Завантажено стан модулів: {data}")
+                    return data
+            except Exception as e:
+                print(f"⚠️ Помилка читання стану: {e}")
+        return {}
+
+    def _save_enabled_state(self):
+        os.makedirs(os.path.join(self.base_path, "config"), exist_ok=True)
+        with open(self.MODULE_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(self.enabled_modules, f, indent=4, ensure_ascii=False)
+        print(f"💾 Стан модулів збережено: {self.enabled_modules}")
+
+    def set_module_enabled(self, name: str, enabled: bool):
+        self.enabled_modules[name] = enabled
+        self._save_enabled_state()
+        self.modules_changed.emit()
+
+    def is_module_enabled(self, name: str) -> bool:
+        return self.enabled_modules.get(name, True)
+
+    def load_modules(self):
+        """Повністю перезавантажує модулі відповідно до стану."""
+        modules_dir = os.path.join(self.base_path, "modules")
+        self.modules.clear()
+
+        if not os.path.exists(modules_dir):
+            print(f"⚠️ Папка '{modules_dir}' не знайдена!")
+            return
+
         for module_name in os.listdir(modules_dir):
             if self._should_skip_module(module_name):
                 continue
-            
-            print(f"\n🔍 Модуль: {module_name}")
+
+            if not self.is_module_enabled(module_name):
+                print(f"🚫 Модуль '{module_name}' вимкнено (пропускаємо).")
+                continue
+
             try:
-                if module_name == "google_drive":
-                    self._load_google_drive()
-                else:
-                    self._load_standard_module(module_name)
+                module = importlib.import_module(f"modules.{module_name}")
+                importlib.reload(module)
+                if not hasattr(module, "register_module"):
+                    continue
+                instance = module.register_module()
+                if not isinstance(instance, BaseModule):
+                    continue
+
+                self.modules[instance.name] = instance
+                print(f"✅ {instance.name} (з '{module_name}') завантажено!")
+
             except Exception as e:
-                print(f"❌ Помилка: {str(e)}")
-    
+                print(f"⚠️ Помилка завантаження '{module_name}': {e}")
+
     def _should_skip_module(self, module_name: str) -> bool:
-        """Перевіряє, чи потрібно ігнорувати модуль"""
         return (
-            not os.path.isdir(f"modules/{module_name}") 
+            not os.path.isdir(os.path.join(self.base_path, "modules", module_name))
             or module_name in ["__pycache__", "base_module"]
             or module_name.startswith("_")
         )
-    
-    def _load_google_drive(self) -> None:
-        """Спеціальна ініціалізація для Google Drive"""
-        try:
-            # Перевірка залежностей
-            self._check_google_dependencies()
-            
-            # Імпорт через try-except для зручності
-            from modules.google_drive.drive_ui import DriveExplorer
-            
-            class DriveModuleWrapper(BaseModule):
-                def __init__(self):
-                    super().__init__(
-                        name="Google Drive",
-                        icon="icons/google_drive.png",
-                        category="Хмара"
-                    )
-                    self._ui = DriveExplorer()
-                
-                def create_content_widget(self):
-                    return self._ui
-                
-                def get_menu_actions(self) -> List[QAction]:
-                    actions = []
-                    refresh_action = QAction("Оновити", self._ui)
-                    refresh_action.triggered.connect(self._ui.load_root)
-                    actions.append(refresh_action)
-                    return actions
-            
-            self.modules["Google Drive"] = DriveModuleWrapper()
-            print("✅ Google Drive успішно підключено!")
-            
-        except Exception as e:
-            print(f"❌ Google Drive недоступний: {str(e)}")
-    
-    def _check_google_dependencies(self) -> None:
-        """Перевіряє наявність бібліотек та файлів для Google Drive"""
-        required_libs = [
-            ("googleapiclient.discovery", "google-api-python-client"),
-            ("PyQt5.QtWebEngineWidgets", "PyQtWebEngine")
-        ]
-        
-        for lib, pip_name in required_libs:
-            try:
-                importlib.import_module(lib)
-            except ImportError:
-                raise ImportError(f"Встановіть '{pip_name}': pip install {pip_name}")
-        
-        if not os.path.exists('client_secret.json'):
-            raise FileNotFoundError("Відсутній client_secret.json (див. інструкції)")
-    
-    def _load_standard_module(self, module_name: str) -> None:
-        """Завантажує звичайний модуль"""
-        try:
-            module = importlib.import_module(f"modules.{module_name}")
-            
-            if not hasattr(module, "register_module"):
-                raise AttributeError("Немає register_module()")
-                
-            instance = module.register_module()
-            
-            if not isinstance(instance, BaseModule):
-                raise TypeError("Модуль має успадковувати BaseModule")
-                
-            self.modules[instance.name] = instance
-            print(f"✅ {instance.name} завантажено!")
-            
-        except Exception as e:
-            print(f"⚠️ Помилка: {type(e).__name__} - {str(e)}")
-    
+
     def get_module(self, name: str) -> Optional[BaseModule]:
         return self.modules.get(name)
-    
+
     def get_all_modules(self) -> List[BaseModule]:
         return list(self.modules.values())

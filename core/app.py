@@ -8,7 +8,11 @@ class MyApp:
         self.app = QApplication(sys.argv)
         self.module_manager = ModuleManager()
         self.main_window = MainWindow(self.module_manager)
-        
+
+        # Передаємо менеджер модулів у меню
+        if hasattr(self.main_window, "menu_bar"):
+            self.main_window.menu_bar.module_manager = self.module_manager
+
     def run(self):
         self.main_window.show()
         sys.exit(self.app.exec_())
